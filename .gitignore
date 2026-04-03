@@ -1,0 +1,12 @@
+# Ignore data and output folders
+Data/
+output/
+
+# Ignore Python specific files
+__pycache__/
+*.pyc
+.venv/
+.env
+
+# Ignore OS specific files
+.DS_Store
