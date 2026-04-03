@@ -4,9 +4,12 @@ import os
 import re
 import pandas as pd
 import matplotlib.pyplot as plt
+import shutil
 
 FOLDER_PATH = r'/Users/jonghyeokkim/PycharmProjects/JitterAnalysisTool_Rohde_ver/Data/JitterTest_260331-0401'
 OUTPUT_DIR = os.path.join('output', '260331-0401_Delaytime_jitter_output')
+if os.path.exists(OUTPUT_DIR):
+    shutil.rmtree(OUTPUT_DIR)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 CHANNEL_LIST = ['CH1', 'CH2']
@@ -215,5 +218,54 @@ if not df_result.empty:
     df_stats['cv'] = df_stats['std'] / df_stats['mean']
 
     df_stats.to_csv(os.path.join(OUTPUT_DIR, 'stats.csv'))
+
+    # ==============================
+    # Summary Plotting
+    # ==============================
+    # 1. Trend Plot: Delay Time vs Filename
+    # Sort by filename to ensure chronological order based on Waveform_YYYY-MM-DD...
+    df_plot = df_result.sort_values('Filename')
+    
+    plt.figure(figsize=(15, 8))
+    for ch in df_plot['Channel'].unique():
+        ch_data = df_plot[df_plot['Channel'] == ch]
+        plt.plot(ch_data['Filename'], ch_data['Delay (us)'], marker='o', markersize=4, linestyle='-', label=ch, alpha=0.8)
+        
+    plt.xticks(rotation=45, ha='right', fontsize=8)
+    plt.title("Delay Time Trend (us) across Files", fontsize=14)
+    plt.xlabel("Filename", fontsize=12)
+    plt.ylabel("Delay (us)", fontsize=12)
+    plt.legend()
+    plt.grid(True, linestyle='--', alpha=0.6)
+    plt.tight_layout()
+    plt.savefig(os.path.join(OUTPUT_DIR, 'summary_delay_trend.png'), dpi=150)
+    plt.close()
+
+    if DEBUG:
+        print(f"  Summary trend plot saved to {os.path.join(OUTPUT_DIR, 'summary_delay_trend.png')}")
+
+    # 2. Distribution Plot: Histogram
+    plt.figure(figsize=(10, 6))
+    for ch in df_result['Channel'].unique():
+        ch_data = df_result[df_result['Channel'] == ch]
+        plt.hist(ch_data['Delay (us)'], bins='auto', alpha=0.7, label=ch, edgecolor='black', density=False)
+        
+        # Add labels for statistics
+        mean_val = ch_data['Delay (us)'].mean()
+        std_val = ch_data['Delay (us)'].std()
+        plt.axvline(mean_val, color='red', linestyle='dashed', linewidth=1)
+        plt.text(mean_val * 1.05, plt.ylim()[1] * 0.9, f'Mean: {mean_val:.3f} us\nStd: {std_val:.3f} us', color='red')
+
+    plt.title("Delay Time Distribution (Histogram)", fontsize=14)
+    plt.xlabel("Delay (us)", fontsize=12)
+    plt.ylabel("Frequency", fontsize=12)
+    plt.legend()
+    plt.grid(True, linestyle='--', alpha=0.5)
+    plt.tight_layout()
+    plt.savefig(os.path.join(OUTPUT_DIR, 'summary_delay_distribution.png'), dpi=150)
+    plt.close()
+
+    if DEBUG:
+        print(f"  Summary distribution plot saved to {os.path.join(OUTPUT_DIR, 'summary_delay_distribution.png')}")
 
 print("Done.")
