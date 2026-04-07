@@ -6,7 +6,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import shutil
 
-FOLDER_PATH = r'/Users/jonghyeokkim/PycharmProjects/JitterAnalysisTool_Rohde_ver/Data/JitterTest_260331-0401'
+FOLDER_PATH = r'D:\work\02_EIS\01_Seismic\04_지연편차 측정\260331-0401_Delaytime_jitter'
 OUTPUT_DIR = os.path.join('output', '260331-0401_Delaytime_jitter_output')
 if os.path.exists(OUTPUT_DIR):
     shutil.rmtree(OUTPUT_DIR)
@@ -233,9 +233,9 @@ if not df_result.empty:
         
     plt.xticks(rotation=45, ha='right', fontsize=8)
     plt.title("Delay Time Trend (us) across Files", fontsize=14)
-    plt.xlabel("Filename", fontsize=12)
+    plt.xlabel("Filename", fontsize=10)
     plt.ylabel("Delay (us)", fontsize=12)
-    plt.legend()
+    plt.legend(['Delay time(CH1->CH2)'])
     plt.grid(True, linestyle='--', alpha=0.6)
     plt.tight_layout()
     plt.savefig(os.path.join(OUTPUT_DIR, 'summary_delay_trend.png'), dpi=150)
