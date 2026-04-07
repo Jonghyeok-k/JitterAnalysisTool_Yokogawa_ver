@@ -226,14 +226,18 @@ if not df_result.empty:
     # Sort by filename to ensure chronological order based on Waveform_YYYY-MM-DD...
     df_plot = df_result.sort_values('Filename')
     
-    plt.figure(figsize=(15, 8))
+    plt.figure(figsize=(30, 16))
     for ch in df_plot['Channel'].unique():
         ch_data = df_plot[df_plot['Channel'] == ch]
         plt.plot(ch_data['Filename'], ch_data['Delay (us)'], marker='o', markersize=4, linestyle='-', label=ch, alpha=0.8)
-        
+
+        mean_val = ch_data['Delay (us)'].mean()
+        plt.axhline(mean_val, color='red', linestyle='dashed', linewidth=1)
+        plt.text(plt.xlim()[1] * 0.9, mean_val, f'Mean: {mean_val:.2f}')
+
     plt.xticks(rotation=45, ha='right', fontsize=8)
     plt.title("Delay Time Trend (us) across Files", fontsize=14)
-    plt.xlabel("Filename", fontsize=10)
+    plt.xlabel("Filename", fontsize=3)
     plt.ylabel("Delay (us)", fontsize=12)
     plt.legend(['Delay time(CH1->CH2)'])
     plt.grid(True, linestyle='--', alpha=0.6)
@@ -254,12 +258,12 @@ if not df_result.empty:
         mean_val = ch_data['Delay (us)'].mean()
         std_val = ch_data['Delay (us)'].std()
         plt.axvline(mean_val, color='red', linestyle='dashed', linewidth=1)
-        plt.text(mean_val * 1.05, plt.ylim()[1] * 0.9, f'Mean: {mean_val:.3f} us\nStd: {std_val:.3f} us', color='red')
+        plt.text(mean_val, plt.ylim()[1] * 0.9, f'Mean: {mean_val:.3f} us\nStd: {std_val:.3f} us', color='red')
 
     plt.title("Delay Time Distribution (Histogram)", fontsize=14)
     plt.xlabel("Delay (us)", fontsize=12)
     plt.ylabel("Frequency", fontsize=12)
-    plt.legend()
+    plt.legend(['Delay time(CH1->CH2)'])
     plt.grid(True, linestyle='--', alpha=0.5)
     plt.tight_layout()
     plt.savefig(os.path.join(OUTPUT_DIR, 'summary_delay_distribution.png'), dpi=150)
