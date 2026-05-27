@@ -244,72 +244,158 @@ for f in files:
 df_result = pd.DataFrame(records)
 
 if not df_result.empty:
-    df_result.to_csv(os.path.join(OUTPUT_DIR, 'summary.csv'), index=False)
+    # ==============================
+    # Group Classification
+    # ==============================
+    # Group 1: Delay >= 1500 us (large delay group)
+    # Group 2: Delay <= 100 us  (small delay group)
+    GROUP1_THRESHOLD = 1500  # us
+    GROUP2_THRESHOLD = 100   # us
 
-    df_stats = df_result.groupby('Channel')['Delay (us)'].agg(['mean', 'std', 'min', 'max'])
-    df_stats['count'] = df_result.groupby('Channel').size()
-    df_stats['range'] = df_stats['max'] - df_stats['min']
-    df_stats['cv'] = df_stats['std'] / df_stats['mean']
+    def classify_group(delay):
+        if delay >= GROUP1_THRESHOLD:
+            return 'Group1'
+        elif delay <= GROUP2_THRESHOLD:
+            return 'Group2'
+        else:
+            return 'Unclassified'
 
-    df_stats.to_csv(os.path.join(OUTPUT_DIR, 'stats.csv'))
+    df_result['Group'] = df_result['Delay (us)'].apply(classify_group)
+
+    # Save overall summary
+    df_result.to_csv(os.path.join(OUTPUT_DIR, 'summary_all.csv'), index=False)
 
     if DEBUG:
-        print(f"\nStatistics:")
-        print(df_stats)
+        group_counts = df_result['Group'].value_counts()
+        print(f"\nGroup Classification:")
+        for g, cnt in group_counts.items():
+            print(f"  {g}: {cnt} files")
 
     # ==============================
-    # Summary Plotting
+    # Per-Group Analysis Helper
     # ==============================
-    # 1. Trend Plot: Delay Time vs Filename
+    def generate_group_outputs(df_group, group_name, group_label):
+        """Generate summary CSV, stats CSV, trend plot, and distribution plot for a group."""
+        group_dir = os.path.join(OUTPUT_DIR, group_name)
+        os.makedirs(group_dir, exist_ok=True)
+
+        # Summary CSV
+        df_group.to_csv(os.path.join(group_dir, f'summary_{group_name}.csv'), index=False)
+
+        # Stats CSV
+        df_stats = df_group.groupby('Channel')['Delay (us)'].agg(['mean', 'std', 'min', 'max'])
+        df_stats['count'] = df_group.groupby('Channel').size()
+        df_stats['range'] = df_stats['max'] - df_stats['min']
+        df_stats['cv'] = df_stats['std'] / df_stats['mean']
+        df_stats.to_csv(os.path.join(group_dir, f'stats_{group_name}.csv'))
+
+        if DEBUG:
+            print(f"\n[{group_label}] Statistics:")
+            print(df_stats)
+
+        # Trend Plot
+        df_plot = df_group.sort_values('Filename')
+
+        plt.figure(figsize=(20, 10))
+        for ch in df_plot['Channel'].unique():
+            ch_data = df_plot[df_plot['Channel'] == ch]
+            plt.plot(ch_data['Filename'], ch_data['Delay (us)'],
+                     marker='o', markersize=6, linestyle='-', label=ch, alpha=0.8)
+
+            mean_val = ch_data['Delay (us)'].mean()
+            plt.axhline(mean_val, color='red', linestyle='dashed', linewidth=1)
+            plt.text(plt.xlim()[1] * 0.9, mean_val, f'Mean: {mean_val:.2f}')
+
+        plt.xticks(rotation=45, ha='right', fontsize=8)
+        plt.title(f"[{group_label}] Delay Time Trend (us)", fontsize=14)
+        plt.xlabel("Filename", fontsize=10)
+        plt.ylabel("Delay (us)", fontsize=12)
+        plt.legend(['Delay time(CH1->CH2)'])
+        plt.grid(True, linestyle='--', alpha=0.6)
+        plt.tight_layout()
+        plt.savefig(os.path.join(group_dir, f'{group_name}_delay_trend.png'), dpi=150)
+        plt.close()
+
+        # Distribution Plot
+        plt.figure(figsize=(10, 6))
+        for ch in df_group['Channel'].unique():
+            ch_data = df_group[df_group['Channel'] == ch]
+            plt.hist(ch_data['Delay (us)'], bins='auto', alpha=0.7,
+                     label=ch, edgecolor='black', density=False)
+
+            mean_val = ch_data['Delay (us)'].mean()
+            std_val = ch_data['Delay (us)'].std()
+            plt.axvline(mean_val, color='red', linestyle='dashed', linewidth=1)
+            plt.text(mean_val, plt.ylim()[1] * 0.9,
+                     f'Mean: {mean_val:.3f} us\nStd: {std_val:.3f} us', color='red')
+
+        plt.title(f"[{group_label}] Delay Time Distribution (Histogram)", fontsize=14)
+        plt.xlabel("Delay (us)", fontsize=12)
+        plt.ylabel("Frequency", fontsize=12)
+        plt.legend(['Delay time(CH1->CH2)'])
+        plt.grid(True, linestyle='--', alpha=0.5)
+        plt.tight_layout()
+        plt.savefig(os.path.join(group_dir, f'{group_name}_delay_distribution.png'), dpi=150)
+        plt.close()
+
+        if DEBUG:
+            print(f"  [{group_label}] Plots saved to {group_dir}/")
+
+    # ==============================
+    # Generate Group 1 Outputs (Delay >= 1500 us)
+    # ==============================
+    df_group1 = df_result[df_result['Group'] == 'Group1']
+    if not df_group1.empty:
+        generate_group_outputs(df_group1, 'Group1',
+                               f'Group 1: Delay >= {GROUP1_THRESHOLD} us')
+    else:
+        print("  Group 1 is empty, skipping.")
+
+    # ==============================
+    # Generate Group 2 Outputs (Delay <= 100 us)
+    # ==============================
+    df_group2 = df_result[df_result['Group'] == 'Group2']
+    if not df_group2.empty:
+        generate_group_outputs(df_group2, 'Group2',
+                               f'Group 2: Delay <= {GROUP2_THRESHOLD} us')
+    else:
+        print("  Group 2 is empty, skipping.")
+
+    # ==============================
+    # Overall Combined Trend Plot (both groups color-coded)
+    # ==============================
     df_plot = df_result.sort_values('Filename')
 
     plt.figure(figsize=(30, 16))
-    for ch in df_plot['Channel'].unique():
-        ch_data = df_plot[df_plot['Channel'] == ch]
-        plt.plot(ch_data['Filename'], ch_data['Delay (us)'],
-                 marker='o', markersize=4, linestyle='-', label=ch, alpha=0.8)
+    colors = {'Group1': '#e74c3c', 'Group2': '#2ecc71', 'Unclassified': '#95a5a6'}
+    labels = {
+        'Group1': f'Group 1 (>= {GROUP1_THRESHOLD} us)',
+        'Group2': f'Group 2 (<= {GROUP2_THRESHOLD} us)',
+        'Unclassified': 'Unclassified'
+    }
 
-        mean_val = ch_data['Delay (us)'].mean()
-        plt.axhline(mean_val, color='red', linestyle='dashed', linewidth=1)
-        plt.text(plt.xlim()[1] * 0.9, mean_val, f'Mean: {mean_val:.2f}')
+    for group_name in ['Group1', 'Group2', 'Unclassified']:
+        g_data = df_plot[df_plot['Group'] == group_name]
+        if not g_data.empty:
+            plt.plot(g_data['Filename'], g_data['Delay (us)'],
+                     marker='o', markersize=6, linestyle='',
+                     color=colors[group_name], label=labels[group_name], alpha=0.9)
+
+    # Connect all points with a light line for trend visibility
+    plt.plot(df_plot['Filename'], df_plot['Delay (us)'],
+             linestyle='-', color='#bdc3c7', alpha=0.4, zorder=0)
 
     plt.xticks(rotation=45, ha='right', fontsize=8)
-    plt.title("Delay Time Trend (us) across Files", fontsize=14)
+    plt.title("Delay Time Trend (us) - All Groups", fontsize=14)
     plt.xlabel("Filename", fontsize=10)
     plt.ylabel("Delay (us)", fontsize=12)
-    plt.legend(['Delay time(CH1->CH2)'])
+    plt.legend(fontsize=11)
     plt.grid(True, linestyle='--', alpha=0.6)
     plt.tight_layout()
-    plt.savefig(os.path.join(OUTPUT_DIR, 'summary_delay_trend.png'), dpi=150)
+    plt.savefig(os.path.join(OUTPUT_DIR, 'summary_delay_trend_all.png'), dpi=150)
     plt.close()
 
     if DEBUG:
-        print(f"  Summary trend plot saved to {os.path.join(OUTPUT_DIR, 'summary_delay_trend.png')}")
-
-    # 2. Distribution Plot: Histogram
-    plt.figure(figsize=(10, 6))
-    for ch in df_result['Channel'].unique():
-        ch_data = df_result[df_result['Channel'] == ch]
-        plt.hist(ch_data['Delay (us)'], bins='auto', alpha=0.7,
-                 label=ch, edgecolor='black', density=False)
-
-        # Add labels for statistics
-        mean_val = ch_data['Delay (us)'].mean()
-        std_val = ch_data['Delay (us)'].std()
-        plt.axvline(mean_val, color='red', linestyle='dashed', linewidth=1)
-        plt.text(mean_val, plt.ylim()[1] * 0.9,
-                 f'Mean: {mean_val:.3f} us\nStd: {std_val:.3f} us', color='red')
-
-    plt.title("Delay Time Distribution (Histogram)", fontsize=14)
-    plt.xlabel("Delay (us)", fontsize=12)
-    plt.ylabel("Frequency", fontsize=12)
-    plt.legend(['Delay time(CH1->CH2)'])
-    plt.grid(True, linestyle='--', alpha=0.5)
-    plt.tight_layout()
-    plt.savefig(os.path.join(OUTPUT_DIR, 'summary_delay_distribution.png'), dpi=150)
-    plt.close()
-
-    if DEBUG:
-        print(f"  Summary distribution plot saved to {os.path.join(OUTPUT_DIR, 'summary_delay_distribution.png')}")
+        print(f"\n  Overall trend plot saved to {os.path.join(OUTPUT_DIR, 'summary_delay_trend_all.png')}")
 
 print("Done.")
