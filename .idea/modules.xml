@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/JitterAnalysisTool_Rohde_ver.iml" filepath="$PROJECT_DIR$/.idea/JitterAnalysisTool_Rohde_ver.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/JitterAnalysisTool_Yokogawa_ver.iml" filepath="$PROJECT_DIR$/.idea/JitterAnalysisTool_Yokogawa_ver.iml" />
     </modules>
   </component>
 </project>

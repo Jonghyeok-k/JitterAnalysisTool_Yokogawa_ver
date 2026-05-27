@@ -1,4 +1,4 @@
-# JitterAnalysisTool_Rohde_ver
+# JitterAnalysisTool_Yokogawa_ver
 
 Seismic project에서 Jitter 측정 데이터를 분석하는 툴
 Rohde 휴대용 오실로스코프로 측정한 데이터를 분석해줌
